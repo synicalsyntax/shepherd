@@ -4060,6 +4060,35 @@ Z`;
 	}
 
 	/**
+	 * Get the top and left offset required to position the modal overlay cutout
+	 * when the target element is within an iframe
+	 * @param {HTMLElement} element The target element
+	 * @private
+	 */
+	function _getIframeOffset(element) {
+	  let offset = {
+	    top: 0,
+	    left: 0
+	  };
+	  if (!element) {
+	    return offset;
+	  }
+	  let targetWindow = element.ownerDocument.defaultView;
+	  while (targetWindow !== window.top) {
+	    var _targetWindow;
+	    const targetIframe = (_targetWindow = targetWindow) == null ? void 0 : _targetWindow.frameElement;
+	    if (targetIframe) {
+	      var _targetIframeRect$scr, _targetIframeRect$scr2;
+	      const targetIframeRect = targetIframe.getBoundingClientRect();
+	      offset.top += targetIframeRect.top + ((_targetIframeRect$scr = targetIframeRect.scrollTop) != null ? _targetIframeRect$scr : 0);
+	      offset.left += targetIframeRect.left + ((_targetIframeRect$scr2 = targetIframeRect.scrollLeft) != null ? _targetIframeRect$scr2 : 0);
+	    }
+	    targetWindow = targetWindow.parent;
+	  }
+	  return offset;
+	}
+
+	/**
 	 * Get the visible height of the target element relative to its scrollParent.
 	 * If there is no scroll parent, the height of the element is returned.
 	 *
@@ -4111,7 +4140,7 @@ Z`;
 	    // Ensure we cleanup all event listeners when we hide the modal
 	    _cleanupStepEventListeners();
 	  }
-	  function positionModal(modalOverlayOpeningPadding = 0, modalOverlayOpeningRadius = 0, scrollParent, targetElement) {
+	  function positionModal(modalOverlayOpeningPadding = 0, modalOverlayOpeningRadius = 0, modalOverlayOpeningXOffset = 0, modalOverlayOpeningYOffset = 0, scrollParent, targetElement) {
 	    if (targetElement) {
 	      const {
 	        y,
@@ -4127,8 +4156,8 @@ Z`;
 	      $$invalidate(4, openingProperties = {
 	        width: width + modalOverlayOpeningPadding * 2,
 	        height: height + modalOverlayOpeningPadding * 2,
-	        x: (x || left) - modalOverlayOpeningPadding,
-	        y: y - modalOverlayOpeningPadding,
+	        x: (x || left) + modalOverlayOpeningXOffset - modalOverlayOpeningPadding,
+	        y: y + modalOverlayOpeningYOffset - modalOverlayOpeningPadding,
 	        r: modalOverlayOpeningRadius
 	      });
 	    } else {
@@ -4188,14 +4217,17 @@ Z`;
 	  function _styleForStep(step) {
 	    const {
 	      modalOverlayOpeningPadding,
-	      modalOverlayOpeningRadius
+	      modalOverlayOpeningRadius,
+	      modalOverlayOpeningXOffset = 0,
+	      modalOverlayOpeningYOffset = 0
 	    } = step.options;
+	    const iframeOffset = _getIframeOffset(step.target);
 	    const scrollParent = _getScrollParent(step.target);
 
 	    // Setup recursive function to call requestAnimationFrame to update the modal opening position
 	    const rafLoop = () => {
 	      rafId = undefined;
-	      positionModal(modalOverlayOpeningPadding, modalOverlayOpeningRadius, scrollParent, step.target);
+	      positionModal(modalOverlayOpeningPadding, modalOverlayOpeningRadius, modalOverlayOpeningXOffset + iframeOffset.left, modalOverlayOpeningYOffset + iframeOffset.top, scrollParent, step.target);
 	      rafId = requestAnimationFrame(rafLoop);
 	    };
 	    rafLoop();
